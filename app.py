@@ -2,6 +2,9 @@ import os
 import requests
 from flask import Flask, jsonify
 from dotenv import load_dotenv
+from supabase import create_client, Client
+
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 load_dotenv()
 
@@ -20,7 +23,13 @@ TMDB_BASE_URL = "https://api.themoviedb.org/3"
 def home():
     return "Bienvenue sur l'API Flask avec TMDB !"
 
+@app.route('/users')
+def get_users():
+    response = supabase.table("users").select("*").execute()
+    return jsonify(response.data)
 
+if __name__ == '__main__':
+    app.run(debug=True)
 @app.route("/trending")
 def get_trending_movies():
     """Récupère les films tendances de la semaine"""

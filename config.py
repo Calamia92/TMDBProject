@@ -1,2 +1,0 @@
-SUPABASE_URL = "https://dqmmcrqfcwhebyjrjsnu.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxbW1jcnFmY3doZWJ5anJqc251Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgyMzI4MDAsImV4cCI6MjA1MzgwODgwMH0.Ki2iySk7LxMIBCjSHlpnAG3olwuuDLgKfBc4IEQqed8"
