@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if movie %}
+        <h1>{{ movie.title }}</h1>
+        <p><strong>Date de sortie :</strong> {{ movie.release_date }}</p>
+        <p><strong>Genres :</strong> {{ ", ".join(movie.genres|map(attribute='name')) }}</p>
+        <p><strong>Popularité :</strong> {{ movie.popularity }}</p>
+        <p><strong>Note moyenne :</strong> {{ movie.vote_average }}/10</p>
+        <img src="https://image.tmdb.org/t/p/w500{{ movie.poster_path }}" alt="{{ movie.title }}">
+    {% else %}
+        <h2>{{ error }}</h2>
+    {% endif %}
+{% endblock %}
