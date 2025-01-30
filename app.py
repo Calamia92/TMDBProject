@@ -2,11 +2,16 @@ import os
 import requests
 import time
 from flask import Flask, render_template, jsonify, request, redirect, url_for
+from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # Charger les variables d'environnement
 load_dotenv()
+
+# Vérification des variables d'environnement
+if not all([os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"), os.getenv("TMDB_API_KEY"), os.getenv("TMDB_READ_ACCESS_TOKEN")]):
+    raise ValueError("⚠️ Certaines variables d'environnement sont manquantes ! Vérifiez votre fichier .env")
 
 # Connexion à Supabase
 supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
@@ -16,11 +21,9 @@ TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 TMDB_READ_ACCESS_TOKEN = os.getenv("TMDB_READ_ACCESS_TOKEN")
 headers = {"Authorization": f"Bearer {TMDB_READ_ACCESS_TOKEN}"}
 
-if not TMDB_API_KEY or not TMDB_READ_ACCESS_TOKEN:
-    raise ValueError("⚠️ Les clés API TMDB ne sont pas définies dans .env !")
-
 # Initialisation de Flask
 app = Flask(__name__)
+CORS(app)  # Autoriser les requêtes entre Streamlit et Flask
 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
@@ -31,7 +34,7 @@ RETRY_DELAY = 2
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return jsonify({"message": "Bienvenue sur l'API TMDB avec Flask"})
 
 
 @app.route("/movies/", methods=["GET"])
@@ -46,43 +49,31 @@ def search_movie():
 
 
 @app.route("/movies/<int:movie_id>")
-@app.route("/movies/<path:movie_id>")
 def get_movie_by_id(movie_id):
     """Récupère un film par son ID TMDB avec gestion des erreurs et retries"""
-
-    # Vérification que l'ID est bien un entier
-    try:
-        movie_id = int(movie_id)
-    except ValueError:
-        return jsonify({"error": "L'ID du film doit être un entier valide."}), 400
 
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, headers=headers, timeout=5)
 
             if response.status_code == 200:
                 data = response.json()
-                filtered_data = {
-                    "title": data.get("title"),
-                    "release_date": data.get("release_date"),
-                    "genres": [genre["name"] for genre in data.get("genres", [])],
-                    "popularity": data.get("popularity"),
-                    "vote_average": data.get("vote_average"),
-                }
-                return render_template("movie.html", movie=data)
+                return jsonify(data)
 
-            # Gestion des erreurs HTTP
-            elif response.status_code == 404:
-                return jsonify({"error": "Film non trouvé"}), 404
-            elif response.status_code == 401:
-                return jsonify({"error": "Clé API invalide ou absente"}), 401
-            elif response.status_code == 403:
-                return jsonify({"error": "Accès refusé"}), 403
+            elif response.status_code in [404, 401, 403]:
+                error_messages = {
+                    404: "Film non trouvé",
+                    401: "Clé API invalide ou absente",
+                    403: "Accès refusé"
+                }
+                return jsonify({"error": error_messages[response.status_code]}), response.status_code
+
             elif response.status_code == 429:
                 print(f"⚠️ Trop de requêtes (429), tentative {attempt}/{MAX_RETRIES}, pause...")
                 time.sleep(RETRY_DELAY * attempt)
+
             elif response.status_code in [500, 503]:
                 print(f"⚠️ Serveur TMDB indisponible ({response.status_code}), tentative {attempt}/{MAX_RETRIES}")
 
@@ -94,7 +85,6 @@ def get_movie_by_id(movie_id):
         except requests.exceptions.RequestException as e:
             print(f"🌐 Erreur réseau : {e}, tentative {attempt}/{MAX_RETRIES}")
 
-        # Pause exponentielle avant retry
         time.sleep(RETRY_DELAY * attempt)
 
     return jsonify({"error": "Impossible de récupérer les données après plusieurs tentatives"}), 503
