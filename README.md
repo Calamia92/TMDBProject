@@ -22,3 +22,9 @@ venv\Scripts\activate     # Windows
 
 # 3️⃣ Installez toutes les dépendances nécessaires
 pip install -r requirements.txt
+
+## 🛠 **Demarrer le projet**
+
+python app.py
+
+streamlit run streamlit_app.py     
