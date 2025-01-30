@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, jsonify
+from flask import Flask, render_template,jsonify, request, redirect, url_for
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import time
@@ -24,35 +24,28 @@ TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
 @app.route("/")
 def home():
-    return "Bienvenue sur l'API Flask avec TMDB !"
+    return render_template("home.html")
 
-@app.route('/users')
-def get_users():
-    response = supabase.table("users").select("*").execute()
-    return jsonify(response.data)
-
-
-@app.route("/trending")
-def get_trending_movies():
-    """Récupère les films tendances de la semaine"""
-    url = f"{TMDB_BASE_URL}/trending/movie/week"
-    headers = {"Authorization": f"Bearer {TMDB_READ_ACCESS_TOKEN}"}
-
-    response = requests.get(url, headers=headers)
 
     if response.status_code == 200:
         return jsonify(response.json())
     else:
         return jsonify({"error": "Erreur TMDB", "status_code": response.status_code, "message": response.text})
 
-MAX_RETRIES = 5  
-RETRY_DELAY = 2 
+MAX_RETRIES = 5
+RETRY_DELAY = 2
 
 @app.route('/movies/<int:movie_id>')
+@app.route('/movies/<path:movie_id>')
 def get_movie_by_id(movie_id):
     """Récupère un film par son ID TMDB avec gestion des erreurs et retries"""
+    try:
+        movie_id = int(movie_id)
+    except ValueError:
+        return jsonify({"error": "L'ID du film doit être un entier valide."}), 400
+
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
-    
+
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = requests.get(url, headers=headers, timeout=10)
@@ -81,6 +74,7 @@ def get_movie_by_id(movie_id):
             elif response.status_code == 429:
                 print(f"⚠️ Trop de requêtes (429), tentative {attempt}/{MAX_RETRIES}, pause...")
                 time.sleep(RETRY_DELAY * attempt)  # Pause exponentielle
+        return render_template("movie.html", movie=data)
             else:
                 return jsonify({"error": f"Erreur API TMDB ({response.status_code})", "message": response.text}), response.status_code
 
@@ -93,7 +87,18 @@ def get_movie_by_id(movie_id):
 
     return jsonify({"error": "Impossible de récupérer les données après plusieurs tentatives"}), 503
 
-        
+        return render_template("movie.html", movie=None, error="Film non trouvé.")
+
+
+@app.route("/movies/", methods=["GET"])
+def search_movie():
+    """Redirige vers la bonne URL avec l'ID du film"""
+    movie_id = request.args.get("movie_id")
+
+    if not movie_id or not movie_id.isdigit():
+        return jsonify({"error": "Veuillez entrer un ID de film valide."}), 400
+
+    return redirect(url_for("get_movie_by_id", movie_id=int(movie_id)))
 
 if __name__ == '__main__':
     app.run(debug=True)

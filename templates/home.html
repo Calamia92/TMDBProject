@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Rechercher un film</h1>
+    <form action="/movies/" method="get">
+        <input type="text" name="movie_id" placeholder="Entrez l'ID du film">
+        <button type="submit">Rechercher</button>
+    </form>
+{% endblock %}
